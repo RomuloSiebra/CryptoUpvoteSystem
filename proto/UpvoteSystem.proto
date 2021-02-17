@@ -1,0 +1,5 @@
+syntax = "proto3";
+
+package UpvoteSystem;
+
+option go_package = "proto/UpvoteSystem";
