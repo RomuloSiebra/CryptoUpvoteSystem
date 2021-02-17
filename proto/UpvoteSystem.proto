@@ -3,3 +3,24 @@ syntax = "proto3";
 package UpvoteSystem;
 
 option go_package = "proto/UpvoteSystem";
+
+message Cryptocurrency {
+    string id = 1;
+    string name = 2;
+    int32  upvote = 3;
+    int32  downvote = 4;
+    string description = 5;
+}
+
+message CreateCryptoRequest{
+    string name = 1;
+    string description = 2;
+}
+
+message CreateCryptoResponse{
+    Cryptocurrency crypto = 1;
+}
+
+service UpvoteSystem {
+    rpc CreateCrypto (CreateCryptoRequest) returns (CreateCryptoResponse);
+}
