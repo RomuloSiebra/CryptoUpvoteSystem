@@ -20,6 +20,10 @@ type server struct {
 	upvoteSystem.UnimplementedUpvoteSystemServer
 }
 
+func (*server) CreateCrypto(ctx context.Context, request *upvoteSystem.CreateCryptoRequest) (*upvoteSystem.CreateCryptoResponse, error) {
+	return nil, nil
+}
+
 func main() {
 	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 
