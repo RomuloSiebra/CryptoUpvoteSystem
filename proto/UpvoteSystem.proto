@@ -13,13 +13,13 @@ message Cryptocurrency {
 }
 
 message CreateCryptoRequest{
-    string name = 1;
-    string description = 2;
+    Cryptocurrency crypto = 1;
 }
 
 message CreateCryptoResponse{
     Cryptocurrency crypto = 1;
 }
+
 
 service UpvoteSystem {
     rpc CreateCrypto (CreateCryptoRequest) returns (CreateCryptoResponse);
