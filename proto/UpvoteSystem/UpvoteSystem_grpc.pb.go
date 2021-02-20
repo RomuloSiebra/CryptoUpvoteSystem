@@ -19,6 +19,10 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UpvoteSystemClient interface {
 	CreateCrypto(ctx context.Context, in *CreateCryptoRequest, opts ...grpc.CallOption) (*CreateCryptoResponse, error)
+	DeleteCrypto(ctx context.Context, in *DeleteCryptoRequest, opts ...grpc.CallOption) (*DeleteCryptoResponse, error)
+	ReadCryptoByID(ctx context.Context, in *ReadCryptoByIDRequest, opts ...grpc.CallOption) (*ReadCryptoByIDResponse, error)
+	ReadAllCrypto(ctx context.Context, in *ReadAllCryptoRequest, opts ...grpc.CallOption) (UpvoteSystem_ReadAllCryptoClient, error)
+	UpdateCrypto(ctx context.Context, in *UpdateCryptoRequest, opts ...grpc.CallOption) (*UpdateCryptoResponse, error)
 }
 
 type upvoteSystemClient struct {
@@ -38,11 +42,74 @@ func (c *upvoteSystemClient) CreateCrypto(ctx context.Context, in *CreateCryptoR
 	return out, nil
 }
 
+func (c *upvoteSystemClient) DeleteCrypto(ctx context.Context, in *DeleteCryptoRequest, opts ...grpc.CallOption) (*DeleteCryptoResponse, error) {
+	out := new(DeleteCryptoResponse)
+	err := c.cc.Invoke(ctx, "/UpvoteSystem.UpvoteSystem/DeleteCrypto", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *upvoteSystemClient) ReadCryptoByID(ctx context.Context, in *ReadCryptoByIDRequest, opts ...grpc.CallOption) (*ReadCryptoByIDResponse, error) {
+	out := new(ReadCryptoByIDResponse)
+	err := c.cc.Invoke(ctx, "/UpvoteSystem.UpvoteSystem/ReadCryptoByID", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *upvoteSystemClient) ReadAllCrypto(ctx context.Context, in *ReadAllCryptoRequest, opts ...grpc.CallOption) (UpvoteSystem_ReadAllCryptoClient, error) {
+	stream, err := c.cc.NewStream(ctx, &UpvoteSystem_ServiceDesc.Streams[0], "/UpvoteSystem.UpvoteSystem/ReadAllCrypto", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &upvoteSystemReadAllCryptoClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type UpvoteSystem_ReadAllCryptoClient interface {
+	Recv() (*ReadAllCryptoResponse, error)
+	grpc.ClientStream
+}
+
+type upvoteSystemReadAllCryptoClient struct {
+	grpc.ClientStream
+}
+
+func (x *upvoteSystemReadAllCryptoClient) Recv() (*ReadAllCryptoResponse, error) {
+	m := new(ReadAllCryptoResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *upvoteSystemClient) UpdateCrypto(ctx context.Context, in *UpdateCryptoRequest, opts ...grpc.CallOption) (*UpdateCryptoResponse, error) {
+	out := new(UpdateCryptoResponse)
+	err := c.cc.Invoke(ctx, "/UpvoteSystem.UpvoteSystem/UpdateCrypto", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UpvoteSystemServer is the server API for UpvoteSystem service.
 // All implementations must embed UnimplementedUpvoteSystemServer
 // for forward compatibility
 type UpvoteSystemServer interface {
 	CreateCrypto(context.Context, *CreateCryptoRequest) (*CreateCryptoResponse, error)
+	DeleteCrypto(context.Context, *DeleteCryptoRequest) (*DeleteCryptoResponse, error)
+	ReadCryptoByID(context.Context, *ReadCryptoByIDRequest) (*ReadCryptoByIDResponse, error)
+	ReadAllCrypto(*ReadAllCryptoRequest, UpvoteSystem_ReadAllCryptoServer) error
+	UpdateCrypto(context.Context, *UpdateCryptoRequest) (*UpdateCryptoResponse, error)
 	mustEmbedUnimplementedUpvoteSystemServer()
 }
 
@@ -52,6 +119,18 @@ type UnimplementedUpvoteSystemServer struct {
 
 func (UnimplementedUpvoteSystemServer) CreateCrypto(context.Context, *CreateCryptoRequest) (*CreateCryptoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateCrypto not implemented")
+}
+func (UnimplementedUpvoteSystemServer) DeleteCrypto(context.Context, *DeleteCryptoRequest) (*DeleteCryptoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteCrypto not implemented")
+}
+func (UnimplementedUpvoteSystemServer) ReadCryptoByID(context.Context, *ReadCryptoByIDRequest) (*ReadCryptoByIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadCryptoByID not implemented")
+}
+func (UnimplementedUpvoteSystemServer) ReadAllCrypto(*ReadAllCryptoRequest, UpvoteSystem_ReadAllCryptoServer) error {
+	return status.Errorf(codes.Unimplemented, "method ReadAllCrypto not implemented")
+}
+func (UnimplementedUpvoteSystemServer) UpdateCrypto(context.Context, *UpdateCryptoRequest) (*UpdateCryptoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateCrypto not implemented")
 }
 func (UnimplementedUpvoteSystemServer) mustEmbedUnimplementedUpvoteSystemServer() {}
 
@@ -84,6 +163,81 @@ func _UpvoteSystem_CreateCrypto_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UpvoteSystem_DeleteCrypto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCryptoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UpvoteSystemServer).DeleteCrypto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/UpvoteSystem.UpvoteSystem/DeleteCrypto",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UpvoteSystemServer).DeleteCrypto(ctx, req.(*DeleteCryptoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UpvoteSystem_ReadCryptoByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadCryptoByIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UpvoteSystemServer).ReadCryptoByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/UpvoteSystem.UpvoteSystem/ReadCryptoByID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UpvoteSystemServer).ReadCryptoByID(ctx, req.(*ReadCryptoByIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UpvoteSystem_ReadAllCrypto_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ReadAllCryptoRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(UpvoteSystemServer).ReadAllCrypto(m, &upvoteSystemReadAllCryptoServer{stream})
+}
+
+type UpvoteSystem_ReadAllCryptoServer interface {
+	Send(*ReadAllCryptoResponse) error
+	grpc.ServerStream
+}
+
+type upvoteSystemReadAllCryptoServer struct {
+	grpc.ServerStream
+}
+
+func (x *upvoteSystemReadAllCryptoServer) Send(m *ReadAllCryptoResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func _UpvoteSystem_UpdateCrypto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCryptoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UpvoteSystemServer).UpdateCrypto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/UpvoteSystem.UpvoteSystem/UpdateCrypto",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UpvoteSystemServer).UpdateCrypto(ctx, req.(*UpdateCryptoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UpvoteSystem_ServiceDesc is the grpc.ServiceDesc for UpvoteSystem service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -95,7 +249,25 @@ var UpvoteSystem_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "CreateCrypto",
 			Handler:    _UpvoteSystem_CreateCrypto_Handler,
 		},
+		{
+			MethodName: "DeleteCrypto",
+			Handler:    _UpvoteSystem_DeleteCrypto_Handler,
+		},
+		{
+			MethodName: "ReadCryptoByID",
+			Handler:    _UpvoteSystem_ReadCryptoByID_Handler,
+		},
+		{
+			MethodName: "UpdateCrypto",
+			Handler:    _UpvoteSystem_UpdateCrypto_Handler,
+		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ReadAllCrypto",
+			Handler:       _UpvoteSystem_ReadAllCrypto_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "proto/UpvoteSystem.proto",
 }

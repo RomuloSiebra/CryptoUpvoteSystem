@@ -20,7 +20,42 @@ message CreateCryptoResponse{
     Cryptocurrency crypto = 1;
 }
 
+message DeleteCryptoRequest {
+    string id = 1;
+}
+
+message DeleteCryptoResponse {
+    bool success = 1;
+}
+
+message ReadCryptoByIDRequest{
+    string id = 1;
+}
+
+message ReadCryptoByIDResponse {
+    Cryptocurrency crypto = 1;
+}
+
+message ReadAllCryptoRequest{}
+
+message ReadAllCryptoResponse {
+    Cryptocurrency crypto = 1;
+}
+
+
+message UpdateCryptoRequest {
+    Cryptocurrency crypto = 1;
+}
+
+message UpdateCryptoResponse {
+    Cryptocurrency crypto = 1;
+}
+
 
 service UpvoteSystem {
     rpc CreateCrypto (CreateCryptoRequest) returns (CreateCryptoResponse);
+    rpc DeleteCrypto (DeleteCryptoRequest) returns (DeleteCryptoResponse);
+    rpc ReadCryptoByID (ReadCryptoByIDRequest) returns (ReadCryptoByIDResponse);
+    rpc ReadAllCrypto (ReadAllCryptoRequest) returns (stream ReadAllCryptoResponse);
+    rpc UpdateCrypto (UpdateCryptoRequest) returns (UpdateCryptoResponse);
 }
