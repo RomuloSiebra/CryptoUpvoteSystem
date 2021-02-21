@@ -23,6 +23,8 @@ type UpvoteSystemClient interface {
 	ReadCryptoByID(ctx context.Context, in *ReadCryptoByIDRequest, opts ...grpc.CallOption) (*ReadCryptoByIDResponse, error)
 	ReadAllCrypto(ctx context.Context, in *ReadAllCryptoRequest, opts ...grpc.CallOption) (UpvoteSystem_ReadAllCryptoClient, error)
 	UpdateCrypto(ctx context.Context, in *UpdateCryptoRequest, opts ...grpc.CallOption) (*UpdateCryptoResponse, error)
+	UpvoteCrypto(ctx context.Context, in *UpvoteCryptoRequest, opts ...grpc.CallOption) (*UpvoteCryptoResponse, error)
+	DownvoteCrypto(ctx context.Context, in *DownvoteCryptoRequest, opts ...grpc.CallOption) (*DownvoteCryptoResponse, error)
 }
 
 type upvoteSystemClient struct {
@@ -101,6 +103,24 @@ func (c *upvoteSystemClient) UpdateCrypto(ctx context.Context, in *UpdateCryptoR
 	return out, nil
 }
 
+func (c *upvoteSystemClient) UpvoteCrypto(ctx context.Context, in *UpvoteCryptoRequest, opts ...grpc.CallOption) (*UpvoteCryptoResponse, error) {
+	out := new(UpvoteCryptoResponse)
+	err := c.cc.Invoke(ctx, "/UpvoteSystem.UpvoteSystem/UpvoteCrypto", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *upvoteSystemClient) DownvoteCrypto(ctx context.Context, in *DownvoteCryptoRequest, opts ...grpc.CallOption) (*DownvoteCryptoResponse, error) {
+	out := new(DownvoteCryptoResponse)
+	err := c.cc.Invoke(ctx, "/UpvoteSystem.UpvoteSystem/DownvoteCrypto", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UpvoteSystemServer is the server API for UpvoteSystem service.
 // All implementations must embed UnimplementedUpvoteSystemServer
 // for forward compatibility
@@ -110,6 +130,8 @@ type UpvoteSystemServer interface {
 	ReadCryptoByID(context.Context, *ReadCryptoByIDRequest) (*ReadCryptoByIDResponse, error)
 	ReadAllCrypto(*ReadAllCryptoRequest, UpvoteSystem_ReadAllCryptoServer) error
 	UpdateCrypto(context.Context, *UpdateCryptoRequest) (*UpdateCryptoResponse, error)
+	UpvoteCrypto(context.Context, *UpvoteCryptoRequest) (*UpvoteCryptoResponse, error)
+	DownvoteCrypto(context.Context, *DownvoteCryptoRequest) (*DownvoteCryptoResponse, error)
 	mustEmbedUnimplementedUpvoteSystemServer()
 }
 
@@ -131,6 +153,12 @@ func (UnimplementedUpvoteSystemServer) ReadAllCrypto(*ReadAllCryptoRequest, Upvo
 }
 func (UnimplementedUpvoteSystemServer) UpdateCrypto(context.Context, *UpdateCryptoRequest) (*UpdateCryptoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateCrypto not implemented")
+}
+func (UnimplementedUpvoteSystemServer) UpvoteCrypto(context.Context, *UpvoteCryptoRequest) (*UpvoteCryptoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpvoteCrypto not implemented")
+}
+func (UnimplementedUpvoteSystemServer) DownvoteCrypto(context.Context, *DownvoteCryptoRequest) (*DownvoteCryptoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DownvoteCrypto not implemented")
 }
 func (UnimplementedUpvoteSystemServer) mustEmbedUnimplementedUpvoteSystemServer() {}
 
@@ -238,6 +266,42 @@ func _UpvoteSystem_UpdateCrypto_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UpvoteSystem_UpvoteCrypto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpvoteCryptoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UpvoteSystemServer).UpvoteCrypto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/UpvoteSystem.UpvoteSystem/UpvoteCrypto",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UpvoteSystemServer).UpvoteCrypto(ctx, req.(*UpvoteCryptoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UpvoteSystem_DownvoteCrypto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DownvoteCryptoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UpvoteSystemServer).DownvoteCrypto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/UpvoteSystem.UpvoteSystem/DownvoteCrypto",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UpvoteSystemServer).DownvoteCrypto(ctx, req.(*DownvoteCryptoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UpvoteSystem_ServiceDesc is the grpc.ServiceDesc for UpvoteSystem service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -260,6 +324,14 @@ var UpvoteSystem_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateCrypto",
 			Handler:    _UpvoteSystem_UpdateCrypto_Handler,
+		},
+		{
+			MethodName: "UpvoteCrypto",
+			Handler:    _UpvoteSystem_UpvoteCrypto_Handler,
+		},
+		{
+			MethodName: "DownvoteCrypto",
+			Handler:    _UpvoteSystem_DownvoteCrypto_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

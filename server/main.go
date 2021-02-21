@@ -128,6 +128,96 @@ func (*server) DeleteCrypto(ctx context.Context, request *upvoteSystem.DeleteCry
 	return response, nil
 }
 
+func (*server) UpdateCrypto(ctx context.Context, request *upvoteSystem.UpdateCryptoRequest) (*upvoteSystem.UpdateCryptoResponse, error) {
+	crypto := request.GetCrypto()
+
+	cryptoID, err := primitive.ObjectIDFromHex(crypto.GetId())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+	}
+
+	data := bson.M{
+		"name":        crypto.GetName(),
+		"description": crypto.GetDescription(),
+	}
+
+	result := db.FindOneAndUpdate(mongoCtx, bson.M{"_id": cryptoID}, bson.M{"$set": data}, options.FindOneAndUpdate().SetReturnDocument(1))
+
+	newCrypto := model.Crypto{}
+
+	err = result.Decode(&newCrypto)
+	if err != nil {
+		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
+	}
+
+	response := &upvoteSystem.UpdateCryptoResponse{
+		Crypto: &upvoteSystem.Cryptocurrency{
+			Id:          newCrypto.ID.Hex(),
+			Name:        newCrypto.Name,
+			Description: newCrypto.Description,
+			Downvote:    newCrypto.Downvote,
+			Upvote:      newCrypto.Upvote,
+		},
+	}
+	return response, nil
+}
+
+func (*server) UpvoteCrypto(ctx context.Context, request *upvoteSystem.UpvoteCryptoRequest) (*upvoteSystem.UpvoteCryptoResponse, error) {
+
+	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
+	if err != nil {
+		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+	}
+
+	filter := bson.M{"_id": cryptoID}
+
+	result := db.FindOneAndUpdate(mongoCtx, filter, bson.M{"$inc": bson.M{"Upvote": 1}}, options.FindOneAndUpdate().SetReturnDocument(1))
+	newCrypto := model.Crypto{}
+	err = result.Decode(&newCrypto)
+	if err != nil {
+		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
+	}
+	response := &upvoteSystem.UpvoteCryptoResponse{
+		Crypto: &upvoteSystem.Cryptocurrency{
+			Id:          newCrypto.ID.Hex(),
+			Name:        newCrypto.Name,
+			Description: newCrypto.Description,
+			Downvote:    newCrypto.Downvote,
+			Upvote:      newCrypto.Upvote,
+		},
+	}
+	return response, nil
+
+}
+
+func (*server) DownvoteCrypto(ctx context.Context, request *upvoteSystem.DownvoteCryptoRequest) (*upvoteSystem.DownvoteCryptoResponse, error) {
+
+	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
+	if err != nil {
+		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+	}
+
+	filter := bson.M{"_id": cryptoID}
+
+	result := db.FindOneAndUpdate(mongoCtx, filter, bson.M{"$inc": bson.M{"Downvote": 1}}, options.FindOneAndUpdate().SetReturnDocument(1))
+	newCrypto := model.Crypto{}
+	err = result.Decode(&newCrypto)
+	if err != nil {
+		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
+	}
+	response := &upvoteSystem.DownvoteCryptoResponse{
+		Crypto: &upvoteSystem.Cryptocurrency{
+			Id:          newCrypto.ID.Hex(),
+			Name:        newCrypto.Name,
+			Description: newCrypto.Description,
+			Downvote:    newCrypto.Downvote,
+			Upvote:      newCrypto.Upvote,
+		},
+	}
+	return response, nil
+
+}
+
 func main() {
 	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 

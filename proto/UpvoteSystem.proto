@@ -51,6 +51,21 @@ message UpdateCryptoResponse {
     Cryptocurrency crypto = 1;
 }
 
+message UpvoteCryptoRequest{
+    string id = 1;
+}
+
+message UpvoteCryptoResponse{
+    Cryptocurrency crypto = 1;
+}
+
+message DownvoteCryptoRequest{
+    string id = 1;
+}
+
+message DownvoteCryptoResponse {
+    Cryptocurrency crypto = 1;
+}
 
 service UpvoteSystem {
     rpc CreateCrypto (CreateCryptoRequest) returns (CreateCryptoResponse);
@@ -58,4 +73,6 @@ service UpvoteSystem {
     rpc ReadCryptoByID (ReadCryptoByIDRequest) returns (ReadCryptoByIDResponse);
     rpc ReadAllCrypto (ReadAllCryptoRequest) returns (stream ReadAllCryptoResponse);
     rpc UpdateCrypto (UpdateCryptoRequest) returns (UpdateCryptoResponse);
+    rpc UpvoteCrypto (UpvoteCryptoRequest) returns (UpvoteCryptoResponse);
+    rpc DownvoteCrypto (DownvoteCryptoRequest) returns (DownvoteCryptoResponse);
 }
