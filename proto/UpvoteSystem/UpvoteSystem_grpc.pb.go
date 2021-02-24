@@ -25,6 +25,7 @@ type UpvoteSystemClient interface {
 	UpdateCrypto(ctx context.Context, in *UpdateCryptoRequest, opts ...grpc.CallOption) (*UpdateCryptoResponse, error)
 	UpvoteCrypto(ctx context.Context, in *UpvoteCryptoRequest, opts ...grpc.CallOption) (*UpvoteCryptoResponse, error)
 	DownvoteCrypto(ctx context.Context, in *DownvoteCryptoRequest, opts ...grpc.CallOption) (*DownvoteCryptoResponse, error)
+	GetVoteSum(ctx context.Context, in *GetVoteSumRequest, opts ...grpc.CallOption) (UpvoteSystem_GetVoteSumClient, error)
 }
 
 type upvoteSystemClient struct {
@@ -121,6 +122,38 @@ func (c *upvoteSystemClient) DownvoteCrypto(ctx context.Context, in *DownvoteCry
 	return out, nil
 }
 
+func (c *upvoteSystemClient) GetVoteSum(ctx context.Context, in *GetVoteSumRequest, opts ...grpc.CallOption) (UpvoteSystem_GetVoteSumClient, error) {
+	stream, err := c.cc.NewStream(ctx, &UpvoteSystem_ServiceDesc.Streams[1], "/UpvoteSystem.UpvoteSystem/GetVoteSum", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &upvoteSystemGetVoteSumClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type UpvoteSystem_GetVoteSumClient interface {
+	Recv() (*GetVoteSumResponse, error)
+	grpc.ClientStream
+}
+
+type upvoteSystemGetVoteSumClient struct {
+	grpc.ClientStream
+}
+
+func (x *upvoteSystemGetVoteSumClient) Recv() (*GetVoteSumResponse, error) {
+	m := new(GetVoteSumResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // UpvoteSystemServer is the server API for UpvoteSystem service.
 // All implementations must embed UnimplementedUpvoteSystemServer
 // for forward compatibility
@@ -132,6 +165,7 @@ type UpvoteSystemServer interface {
 	UpdateCrypto(context.Context, *UpdateCryptoRequest) (*UpdateCryptoResponse, error)
 	UpvoteCrypto(context.Context, *UpvoteCryptoRequest) (*UpvoteCryptoResponse, error)
 	DownvoteCrypto(context.Context, *DownvoteCryptoRequest) (*DownvoteCryptoResponse, error)
+	GetVoteSum(*GetVoteSumRequest, UpvoteSystem_GetVoteSumServer) error
 	mustEmbedUnimplementedUpvoteSystemServer()
 }
 
@@ -159,6 +193,9 @@ func (UnimplementedUpvoteSystemServer) UpvoteCrypto(context.Context, *UpvoteCryp
 }
 func (UnimplementedUpvoteSystemServer) DownvoteCrypto(context.Context, *DownvoteCryptoRequest) (*DownvoteCryptoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownvoteCrypto not implemented")
+}
+func (UnimplementedUpvoteSystemServer) GetVoteSum(*GetVoteSumRequest, UpvoteSystem_GetVoteSumServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetVoteSum not implemented")
 }
 func (UnimplementedUpvoteSystemServer) mustEmbedUnimplementedUpvoteSystemServer() {}
 
@@ -302,6 +339,27 @@ func _UpvoteSystem_DownvoteCrypto_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UpvoteSystem_GetVoteSum_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(GetVoteSumRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(UpvoteSystemServer).GetVoteSum(m, &upvoteSystemGetVoteSumServer{stream})
+}
+
+type UpvoteSystem_GetVoteSumServer interface {
+	Send(*GetVoteSumResponse) error
+	grpc.ServerStream
+}
+
+type upvoteSystemGetVoteSumServer struct {
+	grpc.ServerStream
+}
+
+func (x *upvoteSystemGetVoteSumServer) Send(m *GetVoteSumResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // UpvoteSystem_ServiceDesc is the grpc.ServiceDesc for UpvoteSystem service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -338,6 +396,11 @@ var UpvoteSystem_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "ReadAllCrypto",
 			Handler:       _UpvoteSystem_ReadAllCrypto_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "GetVoteSum",
+			Handler:       _UpvoteSystem_GetVoteSum_Handler,
 			ServerStreams: true,
 		},
 	},

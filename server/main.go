@@ -24,6 +24,8 @@ var dbClient *mongo.Client
 var mongoCtx context.Context
 var db *mongo.Collection
 
+var allRegisteredClients []chan model.Crypto
+
 type server struct {
 	upvoteSystem.UnimplementedUpvoteSystemServer
 }
@@ -162,6 +164,34 @@ func (*server) UpdateCrypto(ctx context.Context, request *upvoteSystem.UpdateCry
 	return response, nil
 }
 
+func remove(s []chan model.Crypto, channel chan model.Crypto) {
+	found := false
+	i := 0
+
+	for ; i < len(s); i++ {
+		if s[i] == channel {
+			found = true
+			break
+		}
+	}
+	if found {
+		s[i] = s[len(s)-1]
+		allRegisteredClients = s[:len(s)-1]
+	}
+
+}
+
+func broadcast(msg model.Crypto) {
+
+	for _, channel := range allRegisteredClients {
+		select {
+		case channel <- msg:
+		default:
+		}
+	}
+
+}
+
 func (*server) UpvoteCrypto(ctx context.Context, request *upvoteSystem.UpvoteCryptoRequest) (*upvoteSystem.UpvoteCryptoResponse, error) {
 
 	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
@@ -177,6 +207,9 @@ func (*server) UpvoteCrypto(ctx context.Context, request *upvoteSystem.UpvoteCry
 	if err != nil {
 		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
 	}
+
+	broadcast(newCrypto)
+
 	response := &upvoteSystem.UpvoteCryptoResponse{
 		Crypto: &upvoteSystem.Cryptocurrency{
 			Id:          newCrypto.ID.Hex(),
@@ -205,6 +238,9 @@ func (*server) DownvoteCrypto(ctx context.Context, request *upvoteSystem.Downvot
 	if err != nil {
 		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
 	}
+
+	broadcast(newCrypto)
+
 	response := &upvoteSystem.DownvoteCryptoResponse{
 		Crypto: &upvoteSystem.Cryptocurrency{
 			Id:          newCrypto.ID.Hex(),
@@ -218,6 +254,29 @@ func (*server) DownvoteCrypto(ctx context.Context, request *upvoteSystem.Downvot
 
 }
 
+func (*server) GetVoteSum(request *upvoteSystem.GetVoteSumRequest, stream upvoteSystem.UpvoteSystem_GetVoteSumServer) error {
+	cryptoID := request.GetId()
+
+	ch := make(chan model.Crypto)
+	allRegisteredClients = append(allRegisteredClients, ch)
+
+	for crypto := range ch {
+		if cryptoID == crypto.ID.Hex() {
+			sum := crypto.Upvote - crypto.Downvote
+			response := &upvoteSystem.GetVoteSumResponse{
+				Votes: sum,
+			}
+			err := stream.Send(response)
+			if err != nil {
+				close(ch)
+				remove(allRegisteredClients, ch)
+				fmt.Println("End stream")
+				return nil
+			}
+		}
+	}
+	return nil
+}
 func main() {
 	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 
