@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -25,6 +27,7 @@ var mongoCtx context.Context
 var db *mongo.Collection
 
 var allRegisteredClients []chan model.Crypto
+var removeClientMutex sync.Mutex
 
 type server struct {
 	upvoteSystem.UnimplementedUpvoteSystemServer
@@ -164,25 +167,26 @@ func (*server) UpdateCrypto(ctx context.Context, request *upvoteSystem.UpdateCry
 	return response, nil
 }
 
-func remove(s []chan model.Crypto, channel chan model.Crypto) {
+func removeConnectedClient(channel chan model.Crypto) {
+	removeClientMutex.Lock()
+	defer removeClientMutex.Unlock()
 	found := false
 	i := 0
 
-	for ; i < len(s); i++ {
-		if s[i] == channel {
+	for ; i < len(allRegisteredClients); i++ {
+		if allRegisteredClients[i] == channel {
 			found = true
 			break
 		}
 	}
 	if found {
-		s[i] = s[len(s)-1]
-		allRegisteredClients = s[:len(s)-1]
+		allRegisteredClients[i] = allRegisteredClients[len(allRegisteredClients)-1]
+		allRegisteredClients = allRegisteredClients[:len(allRegisteredClients)-1]
 	}
 
 }
 
 func broadcast(msg model.Crypto) {
-
 	for _, channel := range allRegisteredClients {
 		select {
 		case channel <- msg:
@@ -258,7 +262,23 @@ func (*server) GetVoteSum(request *upvoteSystem.GetVoteSumRequest, stream upvote
 	cryptoID := request.GetId()
 
 	ch := make(chan model.Crypto)
+
 	allRegisteredClients = append(allRegisteredClients, ch)
+
+	streamCtx := stream.Context()
+	go func() {
+		for {
+			if streamCtx.Err() == context.Canceled || streamCtx.Err() == context.DeadlineExceeded {
+
+				removeConnectedClient(ch)
+				close(ch)
+				fmt.Println("End stream")
+				return
+			}
+			time.Sleep(time.Second)
+		}
+
+	}()
 
 	for crypto := range ch {
 		if cryptoID == crypto.ID.Hex() {
@@ -268,14 +288,17 @@ func (*server) GetVoteSum(request *upvoteSystem.GetVoteSumRequest, stream upvote
 			}
 			err := stream.Send(response)
 			if err != nil {
+
+				removeConnectedClient(ch)
 				close(ch)
-				remove(allRegisteredClients, ch)
 				fmt.Println("End stream")
+
 				return nil
 			}
 		}
 	}
 	return nil
+
 }
 func main() {
 	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
