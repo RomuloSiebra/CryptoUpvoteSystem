@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -41,7 +40,7 @@ func (*server) CreateCrypto(ctx context.Context, request *upvoteSystem.CreateCry
 	description := crypto.GetDescription()
 
 	if name == "" || description == "" {
-		return nil, errors.New("Body contains empty fields")
+		return nil, status.Errorf(codes.InvalidArgument, "Empty fields")
 	}
 	data := model.Crypto{
 		ID:          primitive.NewObjectID(),
@@ -49,6 +48,14 @@ func (*server) CreateCrypto(ctx context.Context, request *upvoteSystem.CreateCry
 		Description: description,
 		Upvote:      0,
 		Downvote:    0,
+	}
+
+	findResult := db.FindOne(mongoCtx, bson.M{"name": name})
+
+	cryptoDup := model.Crypto{}
+
+	if err := findResult.Decode(&cryptoDup); err == nil {
+		return nil, status.Errorf(codes.AlreadyExists, "Cryptocurrency already exists")
 	}
 
 	insertResult, err := db.InsertOne(mongoCtx, data)
@@ -69,7 +76,7 @@ func (*server) CreateCrypto(ctx context.Context, request *upvoteSystem.CreateCry
 func (*server) ReadCryptoByID(ctx context.Context, request *upvoteSystem.ReadCryptoByIDRequest) (*upvoteSystem.ReadCryptoByIDResponse, error) {
 	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("%v", err))
 	}
 
 	result := db.FindOne(mongoCtx, bson.M{"_id": cryptoID})
@@ -77,7 +84,7 @@ func (*server) ReadCryptoByID(ctx context.Context, request *upvoteSystem.ReadCry
 	data := model.Crypto{}
 
 	if err := result.Decode(&data); err != nil {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("Couldn`t find Cryptocurrency with Object Id %s: %v", request.GetId(), err))
+		return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
 	}
 
 	response := &upvoteSystem.ReadCryptoByIDResponse{
@@ -127,14 +134,17 @@ func (*server) ReadAllCrypto(request *upvoteSystem.ReadAllCryptoRequest, stream 
 func (*server) DeleteCrypto(ctx context.Context, request *upvoteSystem.DeleteCryptoRequest) (*upvoteSystem.DeleteCryptoResponse, error) {
 	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, "the provided hex string is not a valid ObjectID")
 	}
 
-	_, err = db.DeleteOne(mongoCtx, bson.M{"_id": cryptoID})
+	result, err := db.DeleteOne(mongoCtx, bson.M{"_id": cryptoID})
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("Couldn`t delete Cryptocurrency with id %s: %v", request.GetId(), err))
+		return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
 	}
 
+	if result.DeletedCount == 0 {
+		return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
+	}
 	response := &upvoteSystem.DeleteCryptoResponse{
 		Success: true,
 	}
@@ -146,14 +156,14 @@ func (*server) UpdateCrypto(ctx context.Context, request *upvoteSystem.UpdateCry
 
 	cryptoID, err := primitive.ObjectIDFromHex(crypto.GetId())
 	if err != nil {
-		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("%v", err))
 	}
 
 	name := crypto.GetName()
 	description := crypto.GetDescription()
 
 	if name == "" || description == "" {
-		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, "Empty fields")
 	}
 
 	data := bson.M{
@@ -162,7 +172,11 @@ func (*server) UpdateCrypto(ctx context.Context, request *upvoteSystem.UpdateCry
 	}
 
 	result := db.FindOneAndUpdate(mongoCtx, bson.M{"_id": cryptoID}, bson.M{"$set": data}, options.FindOneAndUpdate().SetReturnDocument(1))
-
+	if result.Err() != nil {
+		if result.Err() == mongo.ErrNoDocuments {
+			return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
+		}
+	}
 	newCrypto := model.Crypto{}
 
 	err = result.Decode(&newCrypto)
@@ -215,12 +229,17 @@ func (*server) UpvoteCrypto(ctx context.Context, request *upvoteSystem.UpvoteCry
 
 	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
 	if err != nil {
-		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("%v", err))
 	}
 
 	filter := bson.M{"_id": cryptoID}
 
 	result := db.FindOneAndUpdate(mongoCtx, filter, bson.M{"$inc": bson.M{"Upvote": 1}}, options.FindOneAndUpdate().SetReturnDocument(1))
+	if result.Err() != nil {
+		if result.Err() == mongo.ErrNoDocuments {
+			return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
+		}
+	}
 	newCrypto := model.Crypto{}
 	err = result.Decode(&newCrypto)
 	if err != nil {
@@ -246,12 +265,17 @@ func (*server) DownvoteCrypto(ctx context.Context, request *upvoteSystem.Downvot
 
 	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
 	if err != nil {
-		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("%v", err))
 	}
 
 	filter := bson.M{"_id": cryptoID}
 
 	result := db.FindOneAndUpdate(mongoCtx, filter, bson.M{"$inc": bson.M{"Downvote": 1}}, options.FindOneAndUpdate().SetReturnDocument(1))
+	if result.Err() != nil {
+		if result.Err() == mongo.ErrNoDocuments {
+			return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
+		}
+	}
 	newCrypto := model.Crypto{}
 	err = result.Decode(&newCrypto)
 	if err != nil {
@@ -276,14 +300,14 @@ func (*server) DownvoteCrypto(ctx context.Context, request *upvoteSystem.Downvot
 func (*server) GetVotesSum(ctx context.Context, request *upvoteSystem.GetVotesSumRequest) (*upvoteSystem.GetVotesSumResponse, error) {
 	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
 	if err != nil {
-		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("%v", err))
 	}
 	result := db.FindOne(mongoCtx, bson.M{"_id": cryptoID})
 
 	data := model.Crypto{}
 
 	if err := result.Decode(&data); err != nil {
-		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
+		return nil, status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
 	}
 
 	response := &upvoteSystem.GetVotesSumResponse{
@@ -293,7 +317,18 @@ func (*server) GetVotesSum(ctx context.Context, request *upvoteSystem.GetVotesSu
 }
 
 func (*server) GetVoteSumStream(request *upvoteSystem.GetVoteSumStreamRequest, stream upvoteSystem.UpvoteSystem_GetVoteSumStreamServer) error {
-	cryptoID := request.GetId()
+	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
+	if err != nil {
+		return status.Errorf(codes.InvalidArgument, fmt.Sprintf("%v", err))
+	}
+
+	result := db.FindOne(mongoCtx, bson.M{"_id": cryptoID})
+
+	data := model.Crypto{}
+
+	if err := result.Decode(&data); err != nil {
+		return status.Errorf(codes.NotFound, "Couldn`t find Cryptocurrency with Object Id")
+	}
 
 	ch := make(chan model.Crypto)
 
@@ -316,7 +351,7 @@ func (*server) GetVoteSumStream(request *upvoteSystem.GetVoteSumStreamRequest, s
 	}()
 
 	for crypto := range ch {
-		if cryptoID == crypto.ID.Hex() {
+		if cryptoID == crypto.ID {
 			sum := crypto.Upvote - crypto.Downvote
 			response := &upvoteSystem.GetVoteSumStreamResponse{
 				Votes: sum,
