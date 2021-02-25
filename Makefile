@@ -4,6 +4,9 @@ generate:
 dev:
 	@go run server/main.go
 
+client:
+	@go run client/main.go
+	
 test: 
 	@go test -cover ./server
 
