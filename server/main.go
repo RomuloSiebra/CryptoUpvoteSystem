@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -36,10 +37,16 @@ type server struct {
 func (*server) CreateCrypto(ctx context.Context, request *upvoteSystem.CreateCryptoRequest) (*upvoteSystem.CreateCryptoResponse, error) {
 	crypto := request.GetCrypto()
 
+	name := crypto.GetName()
+	description := crypto.GetDescription()
+
+	if name == "" || description == "" {
+		return nil, errors.New("Body contains empty fields")
+	}
 	data := model.Crypto{
 		ID:          primitive.NewObjectID(),
-		Name:        crypto.GetName(),
-		Description: crypto.GetDescription(),
+		Name:        name,
+		Description: description,
 		Upvote:      0,
 		Downvote:    0,
 	}
@@ -47,6 +54,7 @@ func (*server) CreateCrypto(ctx context.Context, request *upvoteSystem.CreateCry
 	insertResult, err := db.InsertOne(mongoCtx, data)
 	if err != nil {
 		log.Fatal(err)
+		return nil, err
 	}
 
 	crypto.Id = insertResult.InsertedID.(primitive.ObjectID).Hex()
@@ -138,12 +146,19 @@ func (*server) UpdateCrypto(ctx context.Context, request *upvoteSystem.UpdateCry
 
 	cryptoID, err := primitive.ObjectIDFromHex(crypto.GetId())
 	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+	}
+
+	name := crypto.GetName()
+	description := crypto.GetDescription()
+
+	if name == "" || description == "" {
+		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
 	}
 
 	data := bson.M{
-		"name":        crypto.GetName(),
-		"description": crypto.GetDescription(),
+		"name":        name,
+		"description": description,
 	}
 
 	result := db.FindOneAndUpdate(mongoCtx, bson.M{"_id": cryptoID}, bson.M{"$set": data}, options.FindOneAndUpdate().SetReturnDocument(1))
@@ -258,7 +273,26 @@ func (*server) DownvoteCrypto(ctx context.Context, request *upvoteSystem.Downvot
 
 }
 
-func (*server) GetVoteSum(request *upvoteSystem.GetVoteSumRequest, stream upvoteSystem.UpvoteSystem_GetVoteSumServer) error {
+func (*server) GetVotesSum(ctx context.Context, request *upvoteSystem.GetVotesSumRequest) (*upvoteSystem.GetVotesSumResponse, error) {
+	cryptoID, err := primitive.ObjectIDFromHex(request.GetId())
+	if err != nil {
+		status.Errorf(codes.InvalidArgument, fmt.Sprintf("Error: %v", err))
+	}
+	result := db.FindOne(mongoCtx, bson.M{"_id": cryptoID})
+
+	data := model.Crypto{}
+
+	if err := result.Decode(&data); err != nil {
+		status.Errorf(codes.NotFound, fmt.Sprintf("Error: %v", err))
+	}
+
+	response := &upvoteSystem.GetVotesSumResponse{
+		Votes: data.Upvote - data.Downvote,
+	}
+	return response, nil
+}
+
+func (*server) GetVoteSumStream(request *upvoteSystem.GetVoteSumStreamRequest, stream upvoteSystem.UpvoteSystem_GetVoteSumStreamServer) error {
 	cryptoID := request.GetId()
 
 	ch := make(chan model.Crypto)
@@ -271,6 +305,7 @@ func (*server) GetVoteSum(request *upvoteSystem.GetVoteSumRequest, stream upvote
 			if streamCtx.Err() == context.Canceled || streamCtx.Err() == context.DeadlineExceeded {
 
 				removeConnectedClient(ch)
+
 				close(ch)
 				fmt.Println("End stream")
 				return
@@ -283,7 +318,7 @@ func (*server) GetVoteSum(request *upvoteSystem.GetVoteSumRequest, stream upvote
 	for crypto := range ch {
 		if cryptoID == crypto.ID.Hex() {
 			sum := crypto.Upvote - crypto.Downvote
-			response := &upvoteSystem.GetVoteSumResponse{
+			response := &upvoteSystem.GetVoteSumStreamResponse{
 				Votes: sum,
 			}
 			err := stream.Send(response)

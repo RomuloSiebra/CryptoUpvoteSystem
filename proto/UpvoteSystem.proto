@@ -67,11 +67,19 @@ message DownvoteCryptoResponse {
     Cryptocurrency crypto = 1;
 }
 
-message GetVoteSumRequest {
+message GetVotesSumRequest {
     string id = 1;
 }
 
-message GetVoteSumResponse{
+message GetVotesSumResponse {
+    int32 votes = 1;
+}
+
+message GetVoteSumStreamRequest {
+    string id = 1;
+}
+
+message GetVoteSumStreamResponse{
     int32 votes = 1;
 }
 service UpvoteSystem {
@@ -82,5 +90,6 @@ service UpvoteSystem {
     rpc UpdateCrypto (UpdateCryptoRequest) returns (UpdateCryptoResponse);
     rpc UpvoteCrypto (UpvoteCryptoRequest) returns (UpvoteCryptoResponse);
     rpc DownvoteCrypto (DownvoteCryptoRequest) returns (DownvoteCryptoResponse);
-    rpc GetVoteSum (GetVoteSumRequest) returns (stream GetVoteSumResponse);
+    rpc GetVotesSum (GetVotesSumRequest) returns (GetVotesSumResponse);
+    rpc GetVoteSumStream (GetVoteSumStreamRequest) returns (stream GetVoteSumStreamResponse);
 }
