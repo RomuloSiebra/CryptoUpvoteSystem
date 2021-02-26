@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"sync"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 
 	model "github.com/RomuloSiebra/CryptoUpvoteSystem/model"
 	upvoteSystem "github.com/RomuloSiebra/CryptoUpvoteSystem/proto/UpvoteSystem"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -371,6 +373,12 @@ func (*server) GetVoteSumStream(request *upvoteSystem.GetVoteSumStreamRequest, s
 
 }
 func main() {
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
 	dbClient, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
 
 	if err != nil {
@@ -387,13 +395,17 @@ func main() {
 	db = dbClient.Database("UpvoteSystem").Collection("Cryptocurrency")
 	fmt.Println("Connected to MongoDB")
 
-	serverPort := 3333
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", serverPort))
+	serverPort := os.Getenv("SERVER_PORT")
+	if serverPort == "" {
+		log.Fatal("Error: Invalid SERVER_PORT environment variable")
+	}
+
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", serverPort))
 	if err != nil {
 		log.Fatalf("Error: %v", err)
 	}
 
-	fmt.Printf("Server listening at port: %d \n", serverPort)
+	fmt.Printf("Server listening at port: %s \n", serverPort)
 	s := grpc.NewServer()
 
 	reflection.Register(s)

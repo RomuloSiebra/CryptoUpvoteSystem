@@ -1,18 +1,35 @@
 package main
 
 import (
-	"context"
 	"io"
 	"log"
 	"net/http"
+	"os"
 
 	upvoteSystem "github.com/RomuloSiebra/CryptoUpvoteSystem/proto/UpvoteSystem"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	conn, err := grpc.Dial("localhost:3333", grpc.WithInsecure())
+
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	serverPort := os.Getenv("SERVER_PORT")
+	if serverPort == "" {
+		log.Fatal("Error: Invalid SERVER_PORT environment variable")
+	}
+
+	clientPort := os.Getenv("CLIENT_PORT")
+	if serverPort == "" {
+		log.Fatal("Error: Invalid CLIENT_PORT environment variable")
+	}
+
+	conn, err := grpc.Dial("localhost:"+serverPort, grpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +81,6 @@ func main() {
 				if err != nil {
 					ctx.JSON(http.StatusBadGateway, gin.H{"Error": "Couldn`t get cryptocurrencies"})
 				}
-				// log.Printf("Resp received: %s", resp.GetCrypto().Name)
 				result = append(result, resp)
 
 			}
@@ -183,72 +199,8 @@ func main() {
 			"result": resp,
 		})
 	})
-	g.GET("/cryptoSumStream/:id", func(ctx *gin.Context) {
-		id := ctx.Param("id")
-		request := &upvoteSystem.GetVoteSumStreamRequest{
-			Id: id,
-		}
 
-		stream, err := client.GetVoteSumStream(ctx, request)
-		if err != nil {
-			ctx.JSON(http.StatusBadGateway, gin.H{"Error": "Couldn`t get vote sum"})
-		}
-		done := make(chan bool)
-
-		go func() {
-			for {
-				resp, err := stream.Recv()
-				if err == io.EOF {
-					done <- true
-					return
-				}
-				if err != nil {
-					done <- true
-					ctx.JSON(http.StatusBadGateway, gin.H{"Error": "Couldn`t get vote sum"})
-				}
-				log.Printf("Resp received: %d \n", resp.GetVotes())
-
-			}
-		}()
-
-		<-done
-		log.Printf("finished")
-
-	})
-	// for i := 0; i < 10000; i++ {
-	// 	go createLiveUpdate("6037662306086867038f7b1d", client)
-	// }
-	if err := g.Run(":8000"); err != nil {
+	if err := g.Run(":" + clientPort); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}
-}
-
-func createLiveUpdate(id string, client upvoteSystem.UpvoteSystemClient) {
-	request := &upvoteSystem.GetVoteSumStreamRequest{
-		Id: id,
-	}
-
-	stream, err := client.GetVoteSumStream(context.Background(), request)
-	if err != nil {
-		log.Fatalf("open stream error %v", err)
-	}
-	done := make(chan bool)
-
-	go func() {
-		for {
-			resp, err := stream.Recv()
-			if err == io.EOF {
-				done <- true
-				return
-			}
-			if err != nil {
-				log.Fatalf("cannot receive %v", err)
-			}
-			log.Printf("Resp received: %d \n", resp.GetVotes())
-
-		}
-	}()
-
-	<-done
-	log.Printf("finished")
 }
